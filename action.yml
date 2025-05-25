@@ -1,5 +1,5 @@
 name: "Claude Max Code Action (OAuth Fork)"
-description: "Fork of Claude Code Action that supports OAuth authentication for Claude Max subscribers. General-purpose Claude agent for GitHub PRs and issues."
+description: "Fork of Claude Code Action that supports OAuth authentication for Claude Max subscribers."
 branding:
   icon: "at-sign"
   color: "orange"
