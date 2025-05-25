@@ -1,8 +1,14 @@
 ![Claude Code Action responding to a comment](https://github.com/user-attachments/assets/1d60c2e9-82ed-4ee5-b749-f9e021c85f4d)
 
-# Claude Code Action
+# Claude Code Action (OAuth Fork)
 
-A general-purpose [Claude Code](https://claude.ai/code) action for GitHub PRs and issues that can answer questions and implement code changes. This action listens for a trigger phrase in comments and activates Claude act on the request. It supports multiple authentication methods including Anthropic direct API, Amazon Bedrock, and Google Vertex AI.
+**This is a fork of the official Claude Code Action that adds support for OAuth authentication, allowing Claude Max subscribers to use their subscription in GitHub Actions.**
+
+A general-purpose [Claude Code](https://claude.ai/code) action for GitHub PRs and issues that can answer questions and implement code changes. This action listens for a trigger phrase in comments and activates Claude act on the request. It supports multiple authentication methods including:
+- **OAuth authentication for Claude Max subscribers** (new in this fork)
+- Anthropic direct API
+- Amazon Bedrock
+- Google Vertex AI
 
 ## Features
 
@@ -33,6 +39,20 @@ This command will guide you through setting up the GitHub app and required secre
 2. Add `ANTHROPIC_API_KEY` to your repository secrets ([Learn how to use secrets in GitHub Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions))
 3. Copy the workflow file from [`examples/claude.yml`](./examples/claude.yml) into your repository's `.github/workflows/`
 
+### OAuth Setup for Claude Max Subscribers
+
+This fork allows Claude Max subscribers to use their subscription in GitHub Actions:
+
+1. Install the Claude GitHub app to your repository: https://github.com/apps/claude
+2. Get your OAuth credentials from your Claude Max subscription:
+   - Make sure you are logged in with your Claude Max in claude with `/login`
+   - Find your access token, refresh token and expires at in `~/.claude/.credentials.json`
+3. Add the following secrets to your repository:
+   - `CLAUDE_ACCESS_TOKEN`: Your Claude OAuth access token
+   - `CLAUDE_REFRESH_TOKEN`: Your Claude OAuth refresh token
+   - `CLAUDE_EXPIRES_AT`: The token expiration timestamp
+4. Use the OAuth configuration in your workflow (see examples below)
+
 ## Usage
 
 Add a workflow file to your repository (e.g., `.github/workflows/claude.yml`):
@@ -53,9 +73,17 @@ jobs:
   claude-response:
     runs-on: ubuntu-latest
     steps:
-      - uses: anthropics/claude-code-action@beta
+      - uses: grll/claude-code-action@beta  # Fork with OAuth support
         with:
+          # Option 1: Direct API (default)
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          
+          # Option 2: OAuth authentication for Claude Max subscribers
+          # use_oauth: "true"
+          # claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          # claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          # claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
+          
           github_token: ${{ secrets.GITHUB_TOKEN }}
           # Optional: add custom trigger phrase (default: @claude)
           # trigger_phrase: "/claude"
@@ -67,7 +95,11 @@ jobs:
 
 | Input                 | Description                                                                                                          | Required | Default   |
 | --------------------- | -------------------------------------------------------------------------------------------------------------------- | -------- | --------- |
-| `anthropic_api_key`   | Anthropic API key (required for direct API, not needed for Bedrock/Vertex)                                           | No\*     | -         |
+| `anthropic_api_key`   | Anthropic API key (required for direct API, not needed for Bedrock/Vertex/OAuth)                                     | No\*     | -         |
+| `use_oauth`           | Use Claude AI OAuth authentication instead of API key (for Claude Max subscribers)                                   | No       | `false`   |
+| `claude_access_token` | Claude AI OAuth access token (required when use_oauth is true)                                                       | No       | -         |
+| `claude_refresh_token`| Claude AI OAuth refresh token (required when use_oauth is true)                                                      | No       | -         |
+| `claude_expires_at`   | Claude AI OAuth token expiration timestamp (required when use_oauth is true)                                         | No       | -         |
 | `direct_prompt`       | Direct prompt for Claude to execute automatically without needing a trigger (for automated workflows)                | No       | -         |
 | `timeout_minutes`     | Timeout in minutes for execution                                                                                     | No       | `30`      |
 | `github_token`        | GitHub token for Claude to operate with. **Only include this if you're connecting a custom GitHub app of your own!** | No       | -         |
@@ -81,7 +113,7 @@ jobs:
 | `assignee_trigger`    | The assignee username that triggers the action (e.g. @claude). Only used for issue assignment                        | No       | -         |
 | `trigger_phrase`      | The trigger phrase to look for in comments, issue/PR bodies, and issue titles                                        | No       | `@claude` |
 
-\*Required when using direct Anthropic API (default and when not using Bedrock or Vertex)
+\*Required when using direct Anthropic API (default and when not using Bedrock, Vertex, or OAuth)
 
 > **Note**: This action is currently in beta. Features and APIs may change as we continue to improve the integration.
 
@@ -159,7 +191,7 @@ on:
       - "src/api/**/*.ts"
 
 steps:
-  - uses: anthropics/claude-code-action@beta
+  - uses: grll/claude-code-action@beta  # Fork with OAuth support
     with:
       direct_prompt: |
         Update the API documentation in README.md to reflect
@@ -183,7 +215,7 @@ jobs:
       github.event.pull_request.user.login == 'developer1' ||
       github.event.pull_request.user.login == 'external-contributor'
     steps:
-      - uses: anthropics/claude-code-action@beta
+      - uses: grll/claude-code-action@beta  # Fork with OAuth support
         with:
           direct_prompt: |
             Please provide a thorough review of this pull request.
@@ -242,7 +274,7 @@ Claude does **not** have access to execute arbitrary Bash commands by default. I
 **Note**: If your repository has a `.mcp.json` file in the root directory, Claude will automatically detect and use the MCP server tools defined there. However, these tools still need to be explicitly allowed via the `allowed_tools` configuration.
 
 ```yaml
-- uses: anthropics/claude-code-action@beta
+- uses: grll/claude-code-action@beta  # Fork with OAuth support
   with:
     allowed_tools: "Bash(npm install),Bash(npm run test),Edit,Replace,NotebookEditCell"
     disallowed_tools: "TaskOutput,KillTask"
@@ -256,7 +288,7 @@ Claude does **not** have access to execute arbitrary Bash commands by default. I
 Use a specific Claude model:
 
 ```yaml
-- uses: anthropics/claude-code-action@beta
+- uses: grll/claude-code-action@beta  # Fork with OAuth support
   with:
     # model: "claude-3-5-sonnet-20241022"  # Optional: specify a different model
     # ... other inputs
@@ -264,11 +296,12 @@ Use a specific Claude model:
 
 ## Cloud Providers
 
-You can authenticate with Claude using any of these three methods:
+You can authenticate with Claude using any of these methods:
 
 1. Direct Anthropic API (default)
-2. Amazon Bedrock with OIDC authentication
-3. Google Vertex AI with OIDC authentication
+2. **OAuth authentication for Claude Max subscribers** (new in this fork)
+3. Amazon Bedrock with OIDC authentication
+4. Google Vertex AI with OIDC authentication
 
 For detailed setup instructions for AWS Bedrock and Google Vertex AI, see the [official documentation](https://docs.anthropic.com/en/docs/claude-code/github-actions#using-with-aws-bedrock-%26-google-vertex-ai).
 
@@ -284,20 +317,29 @@ Use provider-specific model names based on your chosen provider:
 
 ```yaml
 # For direct Anthropic API (default)
-- uses: anthropics/claude-code-action@beta
+- uses: grll/claude-code-action@beta  # Fork with OAuth support
   with:
     anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
     # ... other inputs
 
+# For OAuth authentication (Claude Max subscribers)
+- uses: grll/claude-code-action@beta
+  with:
+    use_oauth: "true"
+    claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+    claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+    claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
+    # ... other inputs
+
 # For Amazon Bedrock with OIDC
-- uses: anthropics/claude-code-action@beta
+- uses: grll/claude-code-action@beta
   with:
     model: "anthropic.claude-3-7-sonnet-20250219-beta:0" # Cross-region inference
     use_bedrock: "true"
     # ... other inputs
 
 # For Google Vertex AI with OIDC
-- uses: anthropics/claude-code-action@beta
+- uses: grll/claude-code-action@beta
   with:
     model: "claude-3-7-sonnet@20250219"
     use_vertex: "true"
@@ -323,7 +365,7 @@ Both AWS Bedrock and GCP Vertex AI require OIDC authentication.
     app-id: ${{ secrets.APP_ID }}
     private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
-- uses: anthropics/claude-code-action@beta
+- uses: grll/claude-code-action@beta  # Fork with OAuth support
   with:
     model: "anthropic.claude-3-7-sonnet-20250219-beta:0"
     use_bedrock: "true"
@@ -348,7 +390,7 @@ Both AWS Bedrock and GCP Vertex AI require OIDC authentication.
     app-id: ${{ secrets.APP_ID }}
     private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
-- uses: anthropics/claude-code-action@beta
+- uses: grll/claude-code-action@beta  # Fork with OAuth support
   with:
     model: "claude-3-7-sonnet@20250219"
     use_vertex: "true"
