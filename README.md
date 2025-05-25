@@ -58,7 +58,8 @@ This fork allows Claude Max subscribers to use their subscription in GitHub Acti
 Add a workflow file to your repository (e.g., `.github/workflows/claude.yml`):
 
 ```yaml
-name: Claude Assistant
+name: Claude PR Assistant
+
 on:
   issue_comment:
     types: [created]
@@ -70,25 +71,33 @@ on:
     types: [submitted]
 
 jobs:
-  claude-response:
+  claude-code-action:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' && contains(github.event.issue.body, '@claude'))
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
     steps:
-      - uses: grll/claude-code-action@beta  # Fork with OAuth support
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          # Option 1: Direct API (default)
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          fetch-depth: 1
+
+      - name: Run Claude PR Action
+        uses: grll/claude-code-action@beta
+        with:
+          use_oauth: true
+          claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
           
-          # Option 2: OAuth authentication for Claude Max subscribers
-          # use_oauth: "true"
-          # claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
-          # claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
-          # claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
-          
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          # Optional: add custom trigger phrase (default: @claude)
-          # trigger_phrase: "/claude"
-          # Optional: add assignee trigger for issues
-          # assignee_trigger: "claude"
+          timeout_minutes: "60"
 ```
 
 ## Inputs

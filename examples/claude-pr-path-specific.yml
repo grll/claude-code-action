@@ -12,11 +12,12 @@ on:
 
 jobs:
   claude-review-paths:
-    runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: read
-      id-token: write
+      issues: read
+      id-token: write  # Required for OIDC authentication when using GitHub App
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -26,14 +27,10 @@ jobs:
       - name: Claude Code Review
         uses: grll/claude-code-action@beta
         with:
-          # Option 1: Use Anthropic API key
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          
-          # Option 2: Use OAuth for Claude Max subscribers
-          # claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
-          # claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
-          # claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
-          
+          use_oauth: true
+          claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
           timeout_minutes: "60"
           direct_prompt: |
             Please review this pull request focusing on the changed files.
