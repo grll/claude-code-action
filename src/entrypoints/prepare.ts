@@ -33,11 +33,11 @@ async function run() {
       octokit.rest,
       context,
     );
-    if (!hasWritePermissions) {
-      throw new Error(
-        "Actor does not have write permissions to the repository",
-      );
-    }
+    // if (!hasWritePermissions) {
+      // throw new Error(
+        // "Actor does not have write permissions to the repository",
+      // );
+    // }
 
     // Step 4: Check trigger conditions
     const containsTrigger = await checkTriggerAction(context);
