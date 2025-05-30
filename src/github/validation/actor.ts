@@ -10,7 +10,7 @@ import type { ParsedGitHubContext } from "../context";
 
 export async function checkHumanActor(
   octokit: Octokit,
-  githubContext: ParsedGitHubContext,
+  githubContext: ParsedGitHubContext
 ) {
   // Fetch user information from GitHub API
   const { data: userData } = await octokit.users.getByUsername({
@@ -22,10 +22,12 @@ export async function checkHumanActor(
   console.log(`Actor type: ${actorType}`);
 
   // if (actorType !== "User") {
-    // throw new Error(
-      // `Workflow initiated by non-human actor: ${githubContext.actor} (type: ${actorType}).`,
-    // );
+  // throw new Error(
+  // `Workflow initiated by non-human actor: ${githubContext.actor} (type: ${actorType}).`,
+  // );
   // }
 
   console.log(`Verified human actor: ${githubContext.actor}`);
+
+  return actorType;
 }

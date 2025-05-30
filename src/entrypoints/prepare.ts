@@ -28,27 +28,29 @@ async function run() {
     // Step 2: Parse GitHub context (once for all operations)
     const context = parseGitHubContext();
 
-    // Step 3: Check write permissions
-    const hasWritePermissions = await checkWritePermissions(
-      octokit.rest,
-      context,
-    );
-    // if (!hasWritePermissions) {
-      // throw new Error(
-        // "Actor does not have write permissions to the repository",
-      // );
-    // }
+    // Step 3: Check if actor is human
+    const actorType = await checkHumanActor(octokit.rest, context);
 
-    // Step 4: Check trigger conditions
+    // Step 4: Check write permissions if actor is a Human
+    if (actorType === "User") {
+      const hasWritePermissions = await checkWritePermissions(
+        octokit.rest,
+        context
+      );
+      if (!hasWritePermissions) {
+        throw new Error(
+          "Actor does not have write permissions to the repository"
+        );
+      }
+    }
+
+    // Step 5: Check trigger conditions
     const containsTrigger = await checkTriggerAction(context);
 
     if (!containsTrigger) {
       console.log("No trigger found, skipping remaining steps");
       return;
     }
-
-    // Step 5: Check if actor is human
-    await checkHumanActor(octokit.rest, context);
 
     // Step 6: Create initial tracking comment
     const commentId = await createInitialComment(octokit.rest, context);
@@ -70,7 +72,7 @@ async function run() {
         octokit,
         context,
         commentId,
-        branchInfo.claudeBranch,
+        branchInfo.claudeBranch
       );
     }
 
@@ -80,7 +82,7 @@ async function run() {
       branchInfo.defaultBranch,
       branchInfo.claudeBranch,
       githubData,
-      context,
+      context
     );
 
     // Step 11: Get MCP configuration
@@ -88,7 +90,7 @@ async function run() {
       githubToken,
       context.repository.owner,
       context.repository.repo,
-      branchInfo.currentBranch,
+      branchInfo.currentBranch
     );
     core.setOutput("mcp_config", mcpConfig);
   } catch (error) {
