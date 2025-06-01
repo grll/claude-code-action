@@ -3,6 +3,7 @@ import type {
   IssuesEvent,
   IssueCommentEvent,
   PullRequestEvent,
+  PullRequestTargetEvent,
   PullRequestReviewEvent,
   PullRequestReviewCommentEvent,
 } from "@octokit/webhooks-types";
@@ -73,7 +74,7 @@ export function parseGitHubContext(): ParsedGitHubContext {
         payload: context.payload as IssueCommentEvent,
         entityNumber: (context.payload as IssueCommentEvent).issue.number,
         isPR: Boolean(
-          (context.payload as IssueCommentEvent).issue.pull_request,
+          (context.payload as IssueCommentEvent).issue.pull_request
         ),
       };
     }
@@ -81,6 +82,14 @@ export function parseGitHubContext(): ParsedGitHubContext {
       return {
         ...commonFields,
         payload: context.payload as PullRequestEvent,
+        entityNumber: (context.payload as PullRequestEvent).pull_request.number,
+        isPR: true,
+      };
+    }
+    case "pull_request_target": {
+      return {
+        ...commonFields,
+        payload: context.payload as PullRequestTargetEvent,
         entityNumber: (context.payload as PullRequestEvent).pull_request.number,
         isPR: true,
       };
@@ -109,31 +118,31 @@ export function parseGitHubContext(): ParsedGitHubContext {
 }
 
 export function isIssuesEvent(
-  context: ParsedGitHubContext,
+  context: ParsedGitHubContext
 ): context is ParsedGitHubContext & { payload: IssuesEvent } {
   return context.eventName === "issues";
 }
 
 export function isIssueCommentEvent(
-  context: ParsedGitHubContext,
+  context: ParsedGitHubContext
 ): context is ParsedGitHubContext & { payload: IssueCommentEvent } {
   return context.eventName === "issue_comment";
 }
 
 export function isPullRequestEvent(
-  context: ParsedGitHubContext,
+  context: ParsedGitHubContext
 ): context is ParsedGitHubContext & { payload: PullRequestEvent } {
   return context.eventName === "pull_request";
 }
 
 export function isPullRequestReviewEvent(
-  context: ParsedGitHubContext,
+  context: ParsedGitHubContext
 ): context is ParsedGitHubContext & { payload: PullRequestReviewEvent } {
   return context.eventName === "pull_request_review";
 }
 
 export function isPullRequestReviewCommentEvent(
-  context: ParsedGitHubContext,
+  context: ParsedGitHubContext
 ): context is ParsedGitHubContext & { payload: PullRequestReviewCommentEvent } {
   return context.eventName === "pull_request_review_comment";
 }

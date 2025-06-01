@@ -77,6 +77,15 @@ type PullRequestEvent = {
   defaultBranch?: string;
 };
 
+type PullRequestTargetEvent = {
+  eventName: "pull_request_target";
+  eventAction?: string; // opened, synchronize, etc.
+  isPR: true;
+  prNumber: string;
+  claudeBranch?: string;
+  defaultBranch?: string;
+};
+
 // Union type for all possible event types
 export type EventData =
   | PullRequestReviewCommentEvent
