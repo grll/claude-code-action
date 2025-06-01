@@ -1,0 +1,20 @@
+name: Claude Max Code Action (OAuth Fork)
+
+on: [push, pull_request]
+
+jobs:
+  claude_max_code_action:
+    runs-on: ubuntu-latest
+    name: Claude Max Code Action (OAuth Fork)
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Claude Max Code Action (OAuth Fork)
+        uses: grll/claude-code-action@beta
+        # Add any necessary inputs for the action here
+        # For example, if it requires authentication tokens:
+        with:
+          claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
+          use_oauth: true
