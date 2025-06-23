@@ -1,4 +1,4 @@
-name: Claude OAuth Login (Simple)
+name: Claude OAuth Login
 
 on:
   workflow_dispatch:
