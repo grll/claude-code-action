@@ -1,0 +1,92 @@
+name: Claude Code with OAuth
+
+on:
+  issue_comment:
+    types: [created]
+  issues:
+    types: [opened, edited]
+  pull_request:
+    types: [opened, edited, synchronize]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  check-and-refresh-token:
+    runs-on: ubuntu-latest
+    outputs:
+      access_token: ${{ steps.refresh-token.outputs.access_token }}
+      refresh_token: ${{ steps.refresh-token.outputs.refresh_token }}
+      expires_at: ${{ steps.refresh-token.outputs.expires_at }}
+      has_credentials: ${{ steps.check-credentials.outputs.has_credentials }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+        
+      - name: Restore Claude credentials from cache
+        id: restore-creds
+        uses: actions/cache/restore@v3
+        with:
+          path: credentials.json
+          key: claude-credentials-${{ github.sha }}
+          restore-keys: |
+            claude-credentials-
+            
+      - name: Check if credentials exist
+        id: check-credentials
+        run: |
+          if [ -f credentials.json ]; then
+            echo "✅ Claude credentials found in cache"
+            echo "has_credentials=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ No Claude credentials found in cache"
+            echo "has_credentials=false" >> $GITHUB_OUTPUT
+            echo "## ❌ No Credentials Found" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please run the 'Claude OAuth Login' workflow first to generate credentials." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "[Run Claude OAuth Login](${{ github.server_url }}/${{ github.repository }}/actions/workflows/claude-oauth-login.yml)" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+      - name: Refresh token if needed
+        id: refresh-token
+        if: steps.check-credentials.outputs.has_credentials == 'true'
+        run: |
+          chmod +x .github/scripts/claude_token_refresh.rb
+          .github/scripts/claude_token_refresh.rb
+          
+      - name: Save updated credentials to cache
+        if: steps.check-credentials.outputs.has_credentials == 'true' && success()
+        uses: actions/cache/save@v3
+        with:
+          path: credentials.json
+          key: claude-credentials-${{ github.sha }}-refreshed-${{ github.run_id }}
+
+  claude-code-action:
+    needs: check-and-refresh-token
+    if: needs.check-and-refresh-token.outputs.has_credentials == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude PR Action
+        uses: grll/claude-code-action@beta
+        with:
+          use_oauth: true
+          claude_access_token: ${{ needs.check-and-refresh-token.outputs.access_token }}
+          claude_refresh_token: ${{ needs.check-and-refresh-token.outputs.refresh_token }}
+          claude_expires_at: ${{ needs.check-and-refresh-token.outputs.expires_at }}
+          timeout_minutes: "60"
