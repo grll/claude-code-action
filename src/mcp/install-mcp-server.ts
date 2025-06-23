@@ -1,4 +1,5 @@
 import * as core from "@actions/core";
+import { GITHUB_API_URL } from "../github/api/config";
 
 type PrepareConfigParams = {
   githubToken: string;
@@ -46,6 +47,7 @@ export async function prepareMcpConfig(
             ...(claudeCommentId && { CLAUDE_COMMENT_ID: claudeCommentId }),
             GITHUB_EVENT_NAME: process.env.GITHUB_EVENT_NAME || "",
             IS_PR: process.env.IS_PR || "false",
+            GITHUB_API_URL: GITHUB_API_URL,
           },
         },
       },
@@ -60,7 +62,7 @@ export async function prepareMcpConfig(
           "--rm",
           "-e",
           "GITHUB_PERSONAL_ACCESS_TOKEN",
-          "ghcr.io/github/github-mcp-server:sha-e9f748f", // https://github.com/github/github-mcp-server/releases/tag/v0.4.0
+          "ghcr.io/github/github-mcp-server:sha-6d69797", // https://github.com/github/github-mcp-server/releases/tag/v0.5.0
         ],
         env: {
           GITHUB_PERSONAL_ACCESS_TOKEN: githubToken,

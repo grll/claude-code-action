@@ -1,5 +1,5 @@
-name: "Claude Max Code Action (OAuth Fork)"
-description: "Fork of Claude Code Action that supports OAuth authentication for Claude Max subscribers."
+name: "Claude Code Action with OAuth"
+description: "Enhanced Claude Code Action supporting authentication for Claude Pro / Max subscribers without API keys."
 branding:
   icon: "at-sign"
   color: "orange"
@@ -78,6 +78,10 @@ inputs:
     required: false
     default: ""
 
+  max_turns:
+    description: "Maximum number of conversation turns"
+    required: false
+    default: ""
   timeout_minutes:
     description: "Timeout in minutes for execution"
     required: false
@@ -115,6 +119,7 @@ runs:
         ASSIGNEE_TRIGGER: ${{ inputs.assignee_trigger }}
         BASE_BRANCH: ${{ inputs.base_branch }}
         ALLOWED_TOOLS: ${{ inputs.allowed_tools }}
+        DISALLOWED_TOOLS: ${{ inputs.disallowed_tools }}
         CUSTOM_INSTRUCTIONS: ${{ inputs.custom_instructions }}
         DIRECT_PROMPT: ${{ inputs.direct_prompt }}
         MCP_CONFIG: ${{ inputs.mcp_config }}
@@ -124,12 +129,13 @@ runs:
     - name: Run Claude Code
       id: claude-code
       if: steps.prepare.outputs.contains_trigger == 'true'
-      uses: grll/claude-code-base-action@9f0fa5eeca1de34e9be1acf05f244e22e4527ca7 # Latest commit from fork
+      uses: grll/claude-code-base-action@83c1d87085aace6d7d9334e7f2be763049fd54da # Latest commit from fork with critical fix
       with:
         prompt_file: ${{ runner.temp }}/claude-prompts/claude-prompt.txt
         allowed_tools: ${{ env.ALLOWED_TOOLS }}
         disallowed_tools: ${{ env.DISALLOWED_TOOLS }}
         timeout_minutes: ${{ inputs.timeout_minutes }}
+        max_turns: ${{ inputs.max_turns }}
         model: ${{ inputs.model || inputs.anthropic_model }}
         mcp_config: ${{ steps.prepare.outputs.mcp_config }}
         use_bedrock: ${{ inputs.use_bedrock }}

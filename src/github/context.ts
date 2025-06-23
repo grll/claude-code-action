@@ -1,6 +1,7 @@
 import * as github from "@actions/github";
 import type {
   IssuesEvent,
+  IssuesAssignedEvent,
   IssueCommentEvent,
   PullRequestEvent,
   PullRequestReviewEvent,
@@ -52,14 +53,8 @@ export function parseGitHubContext(): ParsedGitHubContext {
     inputs: {
       triggerPhrase: process.env.TRIGGER_PHRASE ?? "@claude",
       assigneeTrigger: process.env.ASSIGNEE_TRIGGER ?? "",
-      allowedTools: (process.env.ALLOWED_TOOLS ?? "")
-        .split(",")
-        .map((tool) => tool.trim())
-        .filter((tool) => tool.length > 0),
-      disallowedTools: (process.env.DISALLOWED_TOOLS ?? "")
-        .split(",")
-        .map((tool) => tool.trim())
-        .filter((tool) => tool.length > 0),
+      allowedTools: parseMultilineInput(process.env.ALLOWED_TOOLS ?? ""),
+      disallowedTools: parseMultilineInput(process.env.DISALLOWED_TOOLS ?? ""),
       customInstructions: process.env.CUSTOM_INSTRUCTIONS ?? "",
       directPrompt: process.env.DIRECT_PROMPT ?? "",
       baseBranch: process.env.BASE_BRANCH,
@@ -116,6 +111,14 @@ export function parseGitHubContext(): ParsedGitHubContext {
   }
 }
 
+export function parseMultilineInput(s: string): string[] {
+  return s
+    .split(/,|[\n\r]+/)
+    .map((tool) => tool.replace(/#.+$/, ""))
+    .map((tool) => tool.trim())
+    .filter((tool) => tool.length > 0);
+}
+
 export function isIssuesEvent(
   context: ParsedGitHubContext,
 ): context is ParsedGitHubContext & { payload: IssuesEvent } {
@@ -144,4 +147,10 @@ export function isPullRequestReviewCommentEvent(
   context: ParsedGitHubContext,
 ): context is ParsedGitHubContext & { payload: PullRequestReviewCommentEvent } {
   return context.eventName === "pull_request_review_comment";
+}
+
+export function isIssuesAssignedEvent(
+  context: ParsedGitHubContext,
+): context is ParsedGitHubContext & { payload: IssuesAssignedEvent } {
+  return isIssuesEvent(context) && context.eventAction === "assigned";
 }
