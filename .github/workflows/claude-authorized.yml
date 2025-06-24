@@ -26,6 +26,7 @@ jobs:
       pull-requests: read
       issues: read
       id-token: write
+      actions: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,10 +34,10 @@ jobs:
           fetch-depth: 1
 
       - name: Run Claude PR Action
-        uses: grll/claude-code-action@beta
+        uses: ./
         with:
           use_oauth: true
-          claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
-          claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
-          claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
+          # claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          # claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          # claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
           timeout_minutes: "60"

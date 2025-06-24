@@ -4,6 +4,10 @@ branding:
   icon: "at-sign"
   color: "orange"
 
+permissions:
+  actions: write  # Required for cache management (create/delete cache entries)
+  contents: read  # Required for basic repository access
+
 inputs:
   trigger_phrase:
     description: "The trigger phrase to look for in comments or issue body"
@@ -106,6 +110,37 @@ runs:
         cd ${GITHUB_ACTION_PATH}
         bun install
 
+    - name: Check OAuth cache
+      id: check-oauth-cache
+      uses: actions/cache/restore@v4
+      with:
+        key: claude-oauth-credentials
+        path: ${{ runner.temp }}/claude-oauth-credentials.json
+
+    - name: Validate authentication
+      id: validate-auth
+      shell: bash
+      run: |
+        # Check if OAuth cache exists
+        if [ -f "${{ runner.temp }}/claude-oauth-credentials.json" ]; then
+          echo "oauth_cache_exists=true" >> $GITHUB_OUTPUT
+          echo "Found OAuth credentials cache"
+        else
+          echo "oauth_cache_exists=false" >> $GITHUB_OUTPUT
+          
+          # Check if OAuth is enabled but no cache or tokens provided
+          if [ "${{ inputs.use_oauth }}" = "true" ] && [ -z "${{ inputs.claude_access_token }}" ] && [ -z "${{ inputs.anthropic_api_key }}" ]; then
+            echo "::error::OAuth authentication is enabled but no credentials found. Please run the Claude OAuth action first to authenticate: https://github.com/grll/claude-code-login"
+            exit 1
+          fi
+          
+          # Check if no authentication method is provided
+          if [ -z "${{ inputs.anthropic_api_key }}" ] && [ "${{ inputs.use_bedrock }}" != "true" ] && [ "${{ inputs.use_vertex }}" != "true" ] && [ "${{ inputs.use_oauth }}" != "true" ]; then
+            echo "::error::No authentication method provided. Either set anthropic_api_key, enable use_bedrock/use_vertex, set use_oauth=true, or run the Claude OAuth action to authenticate."
+            exit 1
+          fi
+        fi
+
     - name: Prepare action
       id: prepare
       shell: bash
@@ -122,6 +157,53 @@ runs:
         MCP_CONFIG: ${{ inputs.mcp_config }}
         OVERRIDE_GITHUB_TOKEN: ${{ inputs.github_token }}
         GITHUB_RUN_ID: ${{ github.run_id }}
+        OAUTH_CACHE_EXISTS: ${{ steps.validate-auth.outputs.oauth_cache_exists }}
+
+    - name: Load OAuth credentials from cache
+      id: load-oauth-cache
+      if: steps.validate-auth.outputs.oauth_cache_exists == 'true'
+      shell: bash
+      run: |
+        if [ -f "${{ runner.temp }}/claude-oauth-credentials.json" ]; then
+          # Use the TypeScript refresh script to handle token refresh if necessary
+          cd ${GITHUB_ACTION_PATH}
+          bun .github/scripts/claude_token_refresh.ts "${{ runner.temp }}/claude-oauth-credentials.json"
+          
+          if [ $? -eq 0 ]; then
+            # Extract OAuth credentials from the (potentially refreshed) cache
+            ACCESS_TOKEN=$(jq -r '.claudeAiOauth.accessToken // empty' "${{ runner.temp }}/claude-oauth-credentials.json")
+            REFRESH_TOKEN=$(jq -r '.claudeAiOauth.refreshToken // empty' "${{ runner.temp }}/claude-oauth-credentials.json")
+            EXPIRES_AT=$(jq -r '.claudeAiOauth.expiresAt // empty' "${{ runner.temp }}/claude-oauth-credentials.json")
+            
+            echo "claude_access_token=${ACCESS_TOKEN}" >> $GITHUB_OUTPUT
+            echo "claude_refresh_token=${REFRESH_TOKEN}" >> $GITHUB_OUTPUT
+            echo "claude_expires_at=${EXPIRES_AT}" >> $GITHUB_OUTPUT
+            echo "use_oauth=true" >> $GITHUB_OUTPUT
+            
+            echo "OAuth credentials processed successfully"
+          else
+            echo "::error::Failed to process OAuth credentials. Please re-authenticate using the Claude OAuth action."
+            exit 1
+          fi
+        fi
+
+    - name: Delete Old OAuth Credentials Cache
+      if: steps.load-oauth-cache.outputs.token_refreshed == 'true'
+      shell: bash
+      run: |
+        if gh cache list --repo ${{ github.repository }} --key claude-oauth-credentials | grep -q claude-oauth-credentials; then
+          echo "🗑️ Deleting old OAuth credentials cache..."
+          gh cache delete claude-oauth-credentials --repo ${{ github.repository }}
+        fi
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+
+    - name: Save Refreshed OAuth Credentials
+      if: steps.load-oauth-cache.outputs.token_refreshed == 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ runner.temp }}/claude-oauth-credentials.json
+        key: claude-oauth-credentials
 
     - name: Run Claude Code
       id: claude-code
@@ -137,11 +219,11 @@ runs:
         mcp_config: ${{ steps.prepare.outputs.mcp_config }}
         use_bedrock: ${{ inputs.use_bedrock }}
         use_vertex: ${{ inputs.use_vertex }}
-        use_oauth: ${{ inputs.use_oauth }}
+        use_oauth: ${{ steps.load-oauth-cache.outputs.use_oauth || inputs.use_oauth }}
         anthropic_api_key: ${{ inputs.anthropic_api_key }}
-        claude_access_token: ${{ inputs.claude_access_token }}
-        claude_refresh_token: ${{ inputs.claude_refresh_token }}
-        claude_expires_at: ${{ inputs.claude_expires_at }}
+        claude_access_token: ${{ steps.load-oauth-cache.outputs.claude_access_token || inputs.claude_access_token }}
+        claude_refresh_token: ${{ steps.load-oauth-cache.outputs.claude_refresh_token || inputs.claude_refresh_token }}
+        claude_expires_at: ${{ steps.load-oauth-cache.outputs.claude_expires_at || inputs.claude_expires_at }}
         claude_env: ${{ inputs.claude_env }}
       env:
         # Model configuration
