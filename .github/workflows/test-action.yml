@@ -12,11 +12,11 @@ jobs:
   test-claude:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
-      issues: write
-      actions: write
+      contents: read
+      pull-requests: read
+      issues: read
       id-token: write
+      actions: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
