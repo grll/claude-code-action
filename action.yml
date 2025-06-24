@@ -116,6 +116,16 @@ runs:
       with:
         key: claude-oauth-credentials
         path: ${{ runner.temp }}/claude-oauth-credentials.json
+        
+    - name: Debug cache status
+      shell: bash
+      run: |
+        echo "Cache hit: ${{ steps.check-oauth-cache.outputs.cache-hit }}"
+        echo "Cache key: ${{ steps.check-oauth-cache.outputs.cache-primary-key }}"
+        echo "Cache file exists: $(test -f '${{ runner.temp }}/claude-oauth-credentials.json' && echo 'YES' || echo 'NO')"
+        if [ -f "${{ runner.temp }}/claude-oauth-credentials.json" ]; then
+          echo "Cache file size: $(wc -c < '${{ runner.temp }}/claude-oauth-credentials.json') bytes"
+        fi
 
     - name: Validate authentication
       id: validate-auth
