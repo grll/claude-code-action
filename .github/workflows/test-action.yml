@@ -1,0 +1,30 @@
+name: Test Claude Code Action
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: 'Direct prompt for Claude'
+        required: true
+        default: 'Hello Claude! Please introduce yourself and list the files in this repository.'
+
+jobs:
+  test-claude:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Local Claude Code Action
+        uses: ./
+        with:
+          direct_prompt: ${{ inputs.prompt }}
+          use_oauth: true
