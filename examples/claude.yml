@@ -32,6 +32,8 @@ jobs:
       - name: Run Claude PR Action
         uses: grll/claude-code-action@beta
         with:
+          # Recommend for Claude Code Pro subscription users
+          # model: "claude-sonnet-4-20250514"
           use_oauth: true
           claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
           claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
