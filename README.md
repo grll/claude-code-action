@@ -491,7 +491,7 @@ Use a specific Claude model:
 ```yaml
 - uses: grll/claude-code-action@beta  # Fork with OAuth support
   with:
-    # model: "claude-3-5-sonnet-20241022"  # Optional: specify a different model
+    # model: "claude-sonnet-4-20250514"  # Recommended for Claude Code Pro subscription users
     # ... other inputs
 ```
 
