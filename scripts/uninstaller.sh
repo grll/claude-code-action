@@ -53,13 +53,12 @@ read_from_tty() {
 }
 
 # Summary tracking
-declare -A REMOVAL_SUMMARY
-REMOVAL_SUMMARY["workflows_removed"]=false
-REMOVAL_SUMMARY["workflows_status"]=""
-REMOVAL_SUMMARY["secrets_removed"]=()
-REMOVAL_SUMMARY["secrets_failed"]=()
-REMOVAL_SUMMARY["pat_removed"]=false
-REMOVAL_SUMMARY["pat_status"]=""
+WORKFLOWS_REMOVED=false
+WORKFLOWS_STATUS=""
+SECRETS_REMOVED=""
+SECRETS_FAILED=""
+PAT_REMOVED=false
+PAT_STATUS=""
 
 # ASCII Art Header
 show_header() {
@@ -227,7 +226,7 @@ fi
 
 if [ "$WORKFLOWS_EXIST" = false ]; then
     log_warning "No Claude Code workflow files found in current directory"
-    REMOVAL_SUMMARY["workflows_status"]="No workflow files found to remove"
+    WORKFLOWS_STATUS="No workflow files found to remove"
 else
     # Step 5: Git repository setup for workflow removal
     log_step "STEP 5: Removing Workflow Files"
@@ -273,7 +272,7 @@ else
         MAIN_BRANCH="master"
     else
         log_error "No main/master branch found"
-        REMOVAL_SUMMARY["workflows_status"]="Failed: No main/master branch"
+        WORKFLOWS_STATUS="Failed: No main/master branch"
         WORKFLOWS_EXIST=false
     fi
     
@@ -337,8 +336,8 @@ else
 Co-authored-by: grll <noreply@github.com>"
             
             log_success "Workflow removal committed"
-            REMOVAL_SUMMARY["workflows_removed"]=true
-            REMOVAL_SUMMARY["workflows_status"]="Successfully removed and committed"
+            WORKFLOWS_REMOVED=true
+            WORKFLOWS_STATUS="Successfully removed and committed"
             
             # Push to remote
             log_info "Pushing to remote repository..."
@@ -347,17 +346,17 @@ Co-authored-by: grll <noreply@github.com>"
             else
                 log_warning "Failed to push. You may need to push manually:"
                 echo "  git push origin $MAIN_BRANCH"
-                REMOVAL_SUMMARY["workflows_status"]="Removed locally but failed to push"
+                WORKFLOWS_STATUS="Removed locally but failed to push"
             fi
         else
             log_warning "Workflow files removed locally but not committed"
-            REMOVAL_SUMMARY["workflows_status"]="Removed locally but not committed"
+            WORKFLOWS_STATUS="Removed locally but not committed"
             
             # Restore the files since user didn't consent
             git checkout -- "${WORKFLOW_FILES[@]}"
             log_info "Restored workflow files since commit was declined"
-            REMOVAL_SUMMARY["workflows_removed"]=false
-            REMOVAL_SUMMARY["workflows_status"]="Removal cancelled by user"
+            WORKFLOWS_REMOVED=false
+            WORKFLOWS_STATUS="Removal cancelled by user"
         fi
         
         # Return to original branch
@@ -402,11 +401,19 @@ remove_secret() {
         log_info "Removing secret: $secret_name"
         if gh secret delete "$secret_name" --repo "$REPO_NAME" 2>/dev/null; then
             log_success "Removed: $secret_name"
-            REMOVAL_SUMMARY["secrets_removed"]+=("$secret_name")
+            if [ -z "$SECRETS_REMOVED" ]; then
+                SECRETS_REMOVED="$secret_name"
+            else
+                SECRETS_REMOVED="$SECRETS_REMOVED,$secret_name"
+            fi
             return 0
         else
             log_error "Failed to remove: $secret_name"
-            REMOVAL_SUMMARY["secrets_failed"]+=("$secret_name")
+            if [ -z "$SECRETS_FAILED" ]; then
+                SECRETS_FAILED="$secret_name"
+            else
+                SECRETS_FAILED="$SECRETS_FAILED,$secret_name"
+            fi
             return 1
         fi
     else
@@ -431,47 +438,49 @@ if secret_exists "SECRETS_ADMIN_PAT"; then
     
     if [[ "$REMOVE_PAT" =~ ^[Yy]$ ]]; then
         if remove_secret "SECRETS_ADMIN_PAT"; then
-            REMOVAL_SUMMARY["pat_removed"]=true
-            REMOVAL_SUMMARY["pat_status"]="Successfully removed"
+            PAT_REMOVED=true
+            PAT_STATUS="Successfully removed"
         else
-            REMOVAL_SUMMARY["pat_status"]="Failed to remove"
+            PAT_STATUS="Failed to remove"
         fi
     else
         log_info "Keeping SECRETS_ADMIN_PAT"
-        REMOVAL_SUMMARY["pat_status"]="Kept by user choice"
+        PAT_STATUS="Kept by user choice"
     fi
 else
     log_info "SECRETS_ADMIN_PAT not found"
-    REMOVAL_SUMMARY["pat_status"]="Not found"
+    PAT_STATUS="Not found"
 fi
 
 # Step 7: Summary
 log_step "UNINSTALLATION SUMMARY"
 echo
 echo -e "${BOLD}Workflow Files:${NC}"
-if [ "${REMOVAL_SUMMARY["workflows_removed"]}" = true ]; then
-    echo -e "  ${GREEN}✓${NC} Status: ${REMOVAL_SUMMARY["workflows_status"]}"
+if [ "$WORKFLOWS_REMOVED" = true ]; then
+    echo -e "  ${GREEN}✓${NC} Status: $WORKFLOWS_STATUS"
 else
-    echo -e "  ${YELLOW}○${NC} Status: ${REMOVAL_SUMMARY["workflows_status"]}"
+    echo -e "  ${YELLOW}○${NC} Status: $WORKFLOWS_STATUS"
 fi
 
 echo
 echo -e "${BOLD}GitHub Secrets:${NC}"
-if [ ${#REMOVAL_SUMMARY["secrets_removed"][@]} -gt 0 ]; then
+if [ -n "$SECRETS_REMOVED" ]; then
     echo -e "  ${GREEN}✓${NC} Removed:"
-    for secret in "${REMOVAL_SUMMARY["secrets_removed"][@]}"; do
+    IFS=',' read -ra REMOVED_ARRAY <<< "$SECRETS_REMOVED"
+    for secret in "${REMOVED_ARRAY[@]}"; do
         echo "    • $secret"
     done
 fi
 
-if [ ${#REMOVAL_SUMMARY["secrets_failed"][@]} -gt 0 ]; then
+if [ -n "$SECRETS_FAILED" ]; then
     echo -e "  ${RED}✗${NC} Failed to remove:"
-    for secret in "${REMOVAL_SUMMARY["secrets_failed"][@]}"; do
+    IFS=',' read -ra FAILED_ARRAY <<< "$SECRETS_FAILED"
+    for secret in "${FAILED_ARRAY[@]}"; do
         echo "    • $secret"
     done
 fi
 
-echo -e "  ${YELLOW}○${NC} SECRETS_ADMIN_PAT: ${REMOVAL_SUMMARY["pat_status"]}"
+echo -e "  ${YELLOW}○${NC} SECRETS_ADMIN_PAT: $PAT_STATUS"
 
 echo
 echo -e "${BOLD}Additional Notes:${NC}"
@@ -484,7 +493,7 @@ log_success "Uninstallation process complete"
 
 # Final message
 echo
-if [ "${REMOVAL_SUMMARY["workflows_removed"]}" = true ] && [ ${#REMOVAL_SUMMARY["secrets_removed"][@]} -gt 0 ]; then
+if [ "$WORKFLOWS_REMOVED" = true ] && [ -n "$SECRETS_REMOVED" ]; then
     echo -e "${GREEN}Claude Code OAuth has been successfully removed from $REPO_NAME${NC}"
 else
     echo -e "${YELLOW}Claude Code OAuth was partially removed from $REPO_NAME${NC}"
