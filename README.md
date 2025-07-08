@@ -2,6 +2,33 @@
 
 # Claude Code Action (OAuth Fork)
 
+## UPDATE (2025-07-08)
+
+Anthropic finally brought that capabilities natively making this repository obselete.
+
+You can uninstall everything as simply as you installed it using the uninstaller:
+
+```bash
+# cd into your repo
+bash <(curl -fsSL https://raw.githubusercontent.com/grll/claude-code-action/main/scripts/uninstaller.sh)
+```
+
+Then you can install the github action / token secret directly via the claude code cli:
+
+```
+claude
+/install-github-app     Set up Claude GitHub Actions for a repository
+use current repo
+│ A Claude workflow file already exists at .github/workflows/claude.yml
+│
+│ What would you like to do?
+│
+│ ❯ 1. Update workflow file with latest version   👈
+
+│ > Create a long-lived token with your Claude subscription 👈
+│   Enter a new API key 
+```
+
 ## 🚀 Recent Update (2025-06-29)
 
 ### **🎉 NEW: One-Command Installer Script**
